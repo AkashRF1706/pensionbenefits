@@ -1,0 +1,107 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.util.*" %>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload Error</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        .header {
+            background-color: #4CAF50;
+            padding: 20px;
+            text-align: center;
+            color: white;
+        }
+        .header h1 {
+            margin: 0;
+        }
+        .main {
+            padding: 20px;
+            flex: 1;
+            text-align: center;
+        }
+        .container {
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            max-width: 500px;
+            margin: 0 auto;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            text-align: left;
+        }
+        .footer {
+            background-color: #333;
+            color: white;
+            text-align: center;
+            padding: 10px;
+            position: static;
+            width: 100%;
+        }
+        ul {
+            padding-left: 20px;
+            list-style-type: disc;
+        }
+        .error-message {
+            color: red;
+            font-weight: bold;
+        }
+        .back-button {
+            padding: 10px 20px;
+            background: #007bff;
+            color: #ffffff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        .back-button:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Upload Error</h1>
+    </div>
+    <div class="main">
+        <div class="container">
+            <h2>Invalid Emails</h2>
+            <p>The following emails are invalid and were not processed:</p>
+            <ul>
+                <% 
+                    List<String> invalidEmails = (List<String>) request.getAttribute("invalidEmails");
+                List<String> invalidNiNumbers = (List<String>) request.getAttribute("invalidNiNumbers");
+                if(invalidEmails != null && !invalidEmails.isEmpty()){
+                    for (String email : invalidEmails) {
+                        out.println("<li>" + email + "</li>");
+                    }
+                } else if(invalidNiNumbers != null && !invalidNiNumbers.isEmpty()){
+                	for (String ni : invalidNiNumbers){
+                		out.println("<li>" + ni + "</li>");
+                	}
+                }
+                else{
+                	out.println("Nothing to display");
+                }
+                
+                %>
+            </ul>
+            <a href="addEmployee.jsp" class="back-button">Try Again</a>
+        </div>
+    </div>
+    <div class="footer">
+        <p>&copy; 2024 Pension Portal. All rights reserved.</p>
+    </div>
+</body>
+</html>

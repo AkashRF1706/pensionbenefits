@@ -1,0 +1,67 @@
+package actions;
+
+import java.io.IOException;
+import java.sql.SQLException;
+import java.util.List;
+import java.util.regex.Pattern;
+import javax.servlet.ServletException;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
+
+import database.EmployeeDAO;
+import model.Employee;
+
+@WebServlet("/addEmployee")
+public class AddEmployeeServlet extends HttpServlet {
+    private static final long serialVersionUID = 1L;
+    private static final Pattern EMAIL_PATTERN = Pattern.compile("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,6}$");
+    private static final Pattern NI_NUMBER_PATTERN = Pattern.compile("^[A-Z]{2}[0-9]{6}[A-Z]$");
+
+    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+    	HttpSession session = request.getSession();
+        String firstName = request.getParameter("firstName");
+        String lastName = request.getParameter("lastName");
+        String email = request.getParameter("email");
+        String company = session.getAttribute("company").toString();
+        String niNumber = request.getParameter("niNumber");
+        double annualSalary = Double.parseDouble(request.getParameter("annualSalary"));
+        String employeeStatus = "Active";
+
+        if (!EMAIL_PATTERN.matcher(email).matches()) {
+            request.setAttribute("errorMessage", "Invalid email address");
+            request.getRequestDispatcher("addEmployee.jsp").forward(request, response);
+            return;
+        }
+        if (!NI_NUMBER_PATTERN.matcher(niNumber).matches()) {
+            request.setAttribute("errorMessage", "Invalid NI Number");
+            request.getRequestDispatcher("addEmployee.jsp").forward(request, response);
+            return;
+        }
+
+        double monthlySalary = annualSalary / 12;
+        double personalPension = Math.round(monthlySalary * 0.05 * 100.0) / 100.0;
+        double workplacePension = Math.round(monthlySalary * 0.05 * 100.0) / 100.0;
+
+        Employee employee = new Employee(firstName, lastName, email, company, niNumber, annualSalary, personalPension, workplacePension, employeeStatus);
+        EmployeeDAO employeeDAO = new EmployeeDAO();
+
+        try {
+            List<String> existingEmails = employeeDAO.fetchAllEmails();
+            List<String> existingNiNumbers = employeeDAO.fetchAllNINumbers();
+            int employeeId = employeeDAO.saveEmployee(employee, existingEmails, existingNiNumbers);
+            if (employeeId == -1) {
+            	response.sendRedirect("addEmployee.jsp?errorMessage=Employee with this email or NI Number already exists");
+                return;
+            } else {
+                employeeDAO.saveEmployeeSalary(employeeId, employee);
+                response.sendRedirect("employeeList.jsp?employeeAdded");
+                return;
+            }
+        } catch (SQLException e) {
+            throw new ServletException("Error saving employee", e);
+        }
+    }
+}

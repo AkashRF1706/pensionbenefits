@@ -1,0 +1,190 @@
+<%@ page import="java.sql.Connection" %>
+<%@ page import="java.sql.PreparedStatement" %>
+<%@ page import="java.sql.ResultSet" %>
+<%@ page import="database.DatabaseConnection" %>
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Requests</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        .header {
+            background-color: #4CAF50;
+            padding: 20px;
+            text-align: center;
+            color: white;
+        }
+        .header h1 {
+            margin: 0;
+        }
+        .navbar {
+            display: flex;
+            justify-content: center;
+            background-color: #333;
+        }
+        .navbar a {
+            padding: 14px 20px;
+            display: block;
+            color: white;
+            text-align: center;
+            text-decoration: none;
+        }
+        .navbar a:hover {
+            background-color: #ddd;
+            color: black;
+        }
+        .main {
+            padding: 20px;
+            flex: 1;
+            text-align: center;
+        }
+        .footer {
+            background-color: #333;
+            color: white;
+            text-align: center;
+            padding: 10px;
+            position: static;
+            width: 100%;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        table, th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .no-operations {
+            margin-top: 20px;
+            font-size: 24px;
+            color: #555;
+        }
+        .download-excel {
+            text-align: right;
+            margin-top: 10px;
+        }
+        .download-excel img {
+            width: 32px;
+            height: 32px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <% if (request.getParameter("success") != null) { %>
+        <script>alert('Pension Amount update requested');</script>
+    <% } %>
+    <% if (request.getParameter("failed") != null) { %>
+        <script>alert('Pension Amount update failed. Please try again');</script>
+    <% } %>
+    <% if (request.getParameter("withdrawSuccess") != null) { %>
+        <script>alert('Pension withdraw requested');</script>
+    <% } %>
+    <% if (request.getParameter("withdrawFailed") != null) { %>
+        <script>alert('Pension withdraw request failed. Please try again');</script>
+    <% } %>
+    <% if (request.getParameter("RequestPending") != null) { %>
+        <script>alert('Your previous request is pending approval. Try after receiving the decision');</script>
+    <% } %>
+    <div class="header">
+        <h1>Pension Operations</h1>
+    </div>
+
+    <div class="navbar">
+        <a href="pensioner.jsp">Home</a>
+        <a href="profile.jsp">Profile</a>
+        <a href="managePension.jsp">Manage Pension</a>
+        <a href="myRequests.jsp">My Pension Requests</a>
+        <a href="contact.jsp">Contact</a>
+        <a href="logout.jsp">Logout</a>
+    </div>
+
+    <div class="main">
+        <h2>Pension Requests</h2>
+        <%
+        String name = session.getAttribute("name").toString();
+        String email = session.getAttribute("email").toString();
+        		
+        try {
+            Connection conn = DatabaseConnection.getConnection();
+            String sql = "SELECT po.operation_type, po.status, IFNULL(po.details, ?) as details, po.created_at, po.updated_at FROM pension_operations po "
+            		+ " JOIN employees e on e.id = po.employee_id where e.email = ? order by po.created_at desc";
+            PreparedStatement ps = conn.prepareStatement(sql);
+            ps.setString(1, "N/A");
+            ps.setString(2, email);
+            ResultSet rs = ps.executeQuery();
+
+            if (!rs.isBeforeFirst()) {
+                %>
+                <p class="no-operations">No pension operations found</p>
+                <%
+            } else {
+                %>
+                <div class="download-excel">
+                    <a href="ExportToExcelServlet" title="Download as Excel">
+                        <img src="images/icons8-excel-48.png" alt="Excel Download"/>
+                    </a>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Operation Type</th>
+                            <th>Status</th>
+                            <th>Details</th>
+                            <th>Requested Time</th>
+                            <th>Last Updated Time</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                <%
+                while (rs.next()) {
+                    String operationType = rs.getString("operation_type");
+                    String status = rs.getString("status");
+                    String details = rs.getString("details");
+                    String createdAt = rs.getTimestamp("created_at").toString();
+                    String updatedAt = rs.getTimestamp("updated_at") != null ? rs.getTimestamp("updated_at").toString() : "N/A";
+                %>
+                <tr>
+                    <td><%= operationType %></td>
+                    <td><%= status %></td>
+                    <td><%= details != null ? details : "N/A" %></td>
+                    <td><%= createdAt %></td>
+                    <td><%= updatedAt %></td>
+                </tr>
+                <%
+                }
+                %>
+                    </tbody>
+                </table>
+                <%
+            }
+            rs.close();
+            ps.close();
+            conn.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        %>
+    </div>
+
+    <div class="footer">
+        <p>&copy; 2024 Pension Portal. All rights reserved.</p>
+    </div>
+</body>
+</html>

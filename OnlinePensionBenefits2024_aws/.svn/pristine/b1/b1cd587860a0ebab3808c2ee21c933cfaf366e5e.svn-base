@@ -1,0 +1,182 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.util.*" %>
+<%@ page import="servlet.PensionersHomePageServlet.PensionDetails" %>
+<%@ page import="servlet.PensionersHomePageServlet" %>
+<%@ page import="com.google.gson.Gson" %>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to Pension Portal</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+        .header {
+            background-color: #4CAF50;
+            padding: 20px;
+            text-align: center;
+            color: white;
+        }
+        .header h1 {
+            margin: 0;
+        }
+        .navbar {
+            display: flex;
+            justify-content: center;
+            background-color: #333;
+        }
+        .navbar a {
+            padding: 14px 20px;
+            display: block;
+            color: white;
+            text-align: center;
+            text-decoration: none;
+        }
+        .navbar a:hover {
+            background-color: #ddd;
+            color: black;
+        }
+        .main {
+            padding: 20px;
+            text-align: center;
+        }
+        .main h2 {
+            color: #4CAF50;
+        }
+        .main p {
+            font-size: 18px;
+            margin-bottom: 20px;
+        }
+        .footer {
+            background-color: #333;
+            color: white;
+            text-align: center;
+            padding: 10px;
+            position: relative;
+            bottom: 0;
+            width: 100%;
+        }
+        .button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 15px 25px;
+            border: none;
+            cursor: pointer;
+            font-size: 18px;
+            margin: 10px;
+        }
+        .button:hover {
+            background-color: #45a049;
+        }
+        .chart-container {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+        .chart {
+            width: 30%;
+            min-width: 300px;
+            margin: 20px 0;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="header">
+        <% String name = (String) session.getAttribute("name"); %>
+        <h1>Welcome <%= name %> to Pension Portal</h1>
+    </div>
+    <div class="navbar">
+        <a href="pensioner.jsp">Home</a>
+        <a href="profile.jsp">Profile</a>
+        <a href="managePension.jsp">Manage Pension</a>
+        <a href="apply.jsp">Apply</a>
+        <a href="contact.jsp">Contact</a>
+        <a href="logout.jsp">Logout</a>
+    </div>
+    <div class="main">
+        <h2>Your Retirement Benefits at Your Fingertips</h2>
+        <p>Access all your pension information in one place. Stay updated and manage your benefits easily.</p>
+        <button class="button" onclick="location.href='apply.jsp'">Apply for Benefits</button>
+
+        <% 
+            String email = session.getAttribute("email").toString();
+            List<PensionDetails> pensionDetailsList = new ArrayList<>();
+            if (email != null) {
+                PensionersHomePageServlet servlet = new PensionersHomePageServlet();
+                pensionDetailsList = servlet.getPensionDetails(email);
+            }
+        %>
+        
+        <input type="hidden" id="pensionDetailsList" value='<%= new Gson().toJson(pensionDetailsList) %>'>
+        
+        <div class="chart-container">
+            <div class="chart">
+                <canvas id="pensionLeftChart"></canvas>
+            </div>
+            <div class="chart">
+                <canvas id="pensionAfter68Chart"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="footer">
+        <p>&copy; 2024 Pension Portal. All rights reserved.</p>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const pensionDetailsList = JSON.parse(document.getElementById('pensionDetailsList').value);
+
+            if (pensionDetailsList.length > 0) {
+                renderCharts(pensionDetailsList);
+            }
+        });
+
+        function renderCharts(pensionDetailsList) {
+            var totalPensionAmount = pensionDetailsList.reduce((acc, detail) => acc + (detail.pensionAmount || 0), 0);
+            var usedPensionData = pensionDetailsList.reduce((acc, detail) => acc + (detail.usedPension || 0), 0);
+            var pensionLeftData = totalPensionAmount;
+            console.log(totalPensionAmount);
+            console.log(usedPensionData);
+            var pensionAfter68Data = pensionDetailsList.reduce((acc, detail) => acc + (detail.totalPensionAfter68 || 0), 0);
+            var otherPensionData = pensionDetailsList.reduce((acc, detail) => acc + (detail.monthlyPension || 0), 0);
+
+            var ctx1 = document.getElementById('pensionLeftChart').getContext('2d');
+            var pensionLeftChart = new Chart(ctx1, {
+                type: 'pie',
+                data: {
+                    labels: ['Pension Left', 'Used Pension'],
+                    datasets: [{
+                        label: 'Amount',
+                        data: [pensionLeftData, usedPensionData],
+                        backgroundColor: ['#4CAF50', '#FF6384'],
+                        hoverOffset: 4
+                    }]
+                }
+            });
+
+            var ctx2 = document.getElementById('pensionAfter68Chart').getContext('2d');
+            var pensionAfter68Chart = new Chart(ctx2, {
+                type: 'pie',
+                data: {
+                    labels: ['Pension After 68', 'Monthly Pension'],
+                    datasets: [{
+                        label: 'Amount',
+                        data: [pensionAfter68Data, otherPensionData],
+                        backgroundColor: ['#36A2EB', '#FFCE56'],
+                        hoverOffset: 4
+                    }]
+                }
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,410 @@
+<%@page import="java.sql.PreparedStatement"%>
+<%@page import="java.sql.ResultSet"%>
+<%@page import="database.DatabaseConnection"%>
+<%@page import="java.sql.Connection"%>
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pension Requests</title>
+    <style>
+        /* CSS styles remain the same */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        .header {
+            background-color: #4CAF50;
+            padding: 20px;
+            text-align: center;
+            color: white;
+        }
+        .header h1 {
+            margin: 0;
+        }
+        .navbar {
+            display: flex;
+            justify-content: center;
+            background-color: #333;
+        }
+        .navbar a {
+            padding: 14px 20px;
+            display: block;
+            color: white;
+            text-align: center;
+            text-decoration: none;
+        }
+        .navbar a:hover {
+            background-color: #ddd;
+            color: black;
+        }
+        .main {
+            padding: 20px;
+            flex: 1;
+            text-align: center;
+        }
+        .footer {
+            background-color: #333;
+            color: white;
+            text-align: center;
+            padding: 10px;
+            position: static;
+            width: 100%;
+        }
+        .tabs {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        .tabs button {
+            background-color: #333;
+            color: white;
+            padding: 14px 20px;
+            cursor: pointer;
+            border: none;
+            outline: none;
+            transition: 0.3s;
+        }
+        .tabs button:hover {
+            background-color: #45a049;
+        }
+        .tabs button.active {
+            background-color: #4CAF50;
+        }
+        .tab-content {
+            display: none;
+            padding: 20px;
+            margin-top: 20px;
+            border-top: 1px solid #ccc;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .form-group {
+            margin: 15px 0;
+            text-align: left;
+        }
+        .form-group label {
+            font-size: 18px;
+            margin-bottom: 5px;
+            display: block;
+        }
+        .form-group input {
+            padding: 10px;
+            width: 100%;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+        .form-group button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 15px 25px;
+            border: none;
+            cursor: pointer;
+            font-size: 18px;
+            margin-top: 20px;
+        }
+        .approve {
+            background-color: #4CAF50; /* Green */
+            color: white;
+            padding: 10px 10px;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            border-radius: 2px;
+        }
+
+        .reject {
+            background-color: #f44336; /* Red */
+            color: white;
+            padding: 10px 10px;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            border-radius: 2px;
+        }
+
+        .approve:hover {
+            background-color: #45a049;
+        }
+
+        .reject:hover {
+            background-color: #d32f2f;
+        }
+        .result {
+            margin-top: 20px;
+            font-size: 18px;
+            color: #4CAF50;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        table, th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .no-requests {
+            margin-top: 20px;
+            font-size: 24px;
+            color: #555;
+        }
+    </style>
+    <script>
+        function openTab(evt, tabName) {
+            var i, tabcontent, tablinks;
+            tabcontent = document.getElementsByClassName("tab-content");
+            for (i = 0; i < tabcontent.length; i++) {
+                tabcontent[i].style.display = "none";
+            }
+            tablinks = document.getElementsByClassName("tablinks");
+            for (i = 0; i < tablinks.length; i++) {
+                tablinks[i].className = tablinks[i].className.replace(" active", "");
+            }
+            document.getElementById(tabName).style.display = "block";
+            evt.currentTarget.className += " active";
+        }
+    </script>
+</head>
+<body>
+<% if (request.getParameter("withdrawSuccess") != null) { %>
+        <script>alert('Withdraw request updated');</script>
+<% } %>
+<% if (request.getParameter("withdrawFailed") != null) { %>
+        <script>alert('Withdraw request update failed. Please try again');</script>
+<% } %>
+<% if (request.getParameter("updateSuccess") != null) { %>
+        <script>alert('Pension request updated successfully');</script>
+<% } %>
+<% if (request.getParameter("updateFailed") != null) { %>
+        <script>alert('Pension update request failed. Please try again');</script>
+<% } %>
+    <div class="header">
+        <h1>Manage Pension Requests</h1>
+    </div>
+
+    <div class="navbar">
+    <%String role = session.getAttribute("role").toString();
+      if(role.equalsIgnoreCase("Company")){%>
+        <a href="companyHome.jsp">Home</a>
+        <a href="addEmployee.jsp">Add Employee</a>
+        <a href="pensionRequests.jsp">Pension Requests</a>
+        <a href="employeeList.jsp">Employee List</a>
+        <a href="logout.jsp">Logout</a>
+        <%} else if(role.equalsIgnoreCase("Administrator")){ %>
+        <a href="admin.jsp">Home</a>
+        <a href="companyApproval.jsp">Approve Companies</a>
+        <a href="pensionRequests.jsp">Pension Requests</a>
+        <a href="manageUsers.jsp">Manage Users</a>
+        <a href="logout.jsp">Logout</a>
+        <%} %>
+    </div>
+     
+    <div class="main">
+    <%if(!role.equalsIgnoreCase("Administrator")) { %>
+        <div class="tabs">
+            <button class="tablinks active" onclick="openTab(event, 'PendingRequests')">Withdraw Requests</button>
+            <button class="tablinks" onclick="openTab(event, 'ProcessedRequests')">Pension Update Requests</button>
+        </div>
+        <% } %>
+
+        <div id="PendingRequests" class="tab-content active">
+            <h2>Pending Pension Withdrawal Requests</h2>
+            <%
+            String company = "";
+            if(role.equalsIgnoreCase("Company")){
+            	company = session.getAttribute("company").toString();
+            }
+            System.out.println(company);
+            try {
+                Connection conn = DatabaseConnection.getConnection();
+                String sql;
+                
+                if (role.equalsIgnoreCase("Administrator")) {
+                    sql = "SELECT e.id, e.first_name, e.last_name, e.email, p.withdraw_pension_amount, p.pension_amount, e.company FROM employees e "
+                        + "JOIN pensions p ON e.id = p.employee_id WHERE p.withdraw_flag = 'A'";
+                } else {
+                    sql = "SELECT e.id, e.first_name, e.last_name, e.email, p.withdraw_pension_amount, p.pension_amount FROM employees e "
+                        + "JOIN pensions p ON e.id = p.employee_id WHERE p.withdraw_flag = 'C' AND e.company = ?";
+                }
+                
+                PreparedStatement ptst = conn.prepareStatement(sql);
+                if(!role.equalsIgnoreCase("Administrator")){
+                    ptst.setString(1, company);
+                }
+                ResultSet rs = ptst.executeQuery();
+
+                if (!rs.isBeforeFirst()) {
+                    %>
+                    <p class="no-requests">No requests pending</p>
+                    <%
+                } else {
+                    %>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Employee ID</th>
+                                <th>Employee Name</th>
+                                <th>Email</th>
+                                <%if(role.equalsIgnoreCase("Administrator")){ %>
+                                <th>Company</th>
+                                <%} %>
+                                <th>Requested Amount (GBP)</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                    <%
+                    while(rs.next()) {
+                        int employeeId = rs.getInt("id");
+                        String employeeName = rs.getString("first_name") + " " + rs.getString("last_name");
+                        String email = rs.getString("email");
+                        double requestedAmount = rs.getDouble("withdraw_pension_amount");
+                        String companyName = "";
+                        if(role.equalsIgnoreCase("Administrator")){
+                        companyName = rs.getString("company");
+                        }
+                    %>
+                    <tr>
+                        <td><%= employeeId %></td>
+                        <td><%= employeeName %></td>
+                        <td><%= email %></td>
+                         <%if(role.equalsIgnoreCase("Administrator")){ %>
+                                <td><%=companyName%></td>
+                                <%} %>
+                        <td><%= requestedAmount %></td>
+                        <td>
+                            <form action="ApproveRejectWithdrawServlet" method="post" style="display:inline-block;">
+                                <input type="hidden" name="employeeId" value="<%= employeeId %>">
+                                <input type="hidden" name="action" value="approve">
+                                <button type="submit" class="approve">Approve</button>
+                            </form>
+                            <form action="ApproveRejectWithdrawServlet" method="post" style="display:inline-block;">
+                                <input type="hidden" name="employeeId" value="<%= employeeId %>">
+                                <input type="hidden" name="action" value="reject">
+                                <button type="submit" class="reject">Reject</button>
+                            </form>
+                        </td>
+                    </tr>
+                    <%
+                    }
+                    %>
+                        </tbody>
+                    </table>
+                    <%
+                }
+                rs.close();
+                ptst.close();
+                conn.close();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            %>
+        </div>
+        
+        <div id="ProcessedRequests" class="tab-content">
+            <h2>Pending Personal Pension Update Requests</h2>
+            <%
+            try {
+                Connection conn = DatabaseConnection.getConnection();
+                String sql = " SELECT e.id, e.first_name, e.last_name, e.email, es.salary, es.workplace_pension, es.personal_pension, p.pension_amount, p.update_pension_amount, p.update_flag, e.company FROM employees e "
+                           + " JOIN employee_salaries es on es.employee_id = e.id "
+                           + " JOIN pensions p ON e.id = p.employee_id WHERE p.update_flag = 'C' AND e.company = ? ";
+                PreparedStatement ptst = conn.prepareStatement(sql);
+                ptst.setString(1, company);
+                ResultSet rs = ptst.executeQuery();
+
+                if (!rs.isBeforeFirst()) {
+                    %>
+                    <p class="no-requests">No requests pending</p>
+                    <%
+                } else {
+                    %>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Employee ID</th>
+                                <th>Employee Name</th>
+                                <th>Email</th>
+                                <th>Annual Income</th>
+                                <th>Monthly Workplace Pension</th>
+                                <th>Total Pension Left</th>
+                                <th>Current Personal Pension</th>
+                                <th>Requested Personal Pension Amount (GBP)</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                    <%
+                    while(rs.next()) {
+                        int employeeId = rs.getInt("id");
+                        String employeeName = rs.getString("first_name") + " " + rs.getString("last_name");
+                        String email = rs.getString("email");
+                        double salary = rs.getDouble("salary");
+                        double workplacePension = rs.getDouble("workplace_pension");
+                        double totalPension = rs.getDouble("pension_amount");
+                        double personalPension = rs.getDouble("personal_pension");
+                        double requestedAmount = rs.getDouble("update_pension_amount");
+                    %>
+                    <tr>
+                        <td><%= employeeId %></td>
+                        <td><%= employeeName %></td>
+                        <td><%= email %></td>
+                        <td><%= salary %></td>
+                        <td><%= workplacePension %></td>
+                        <td><%= totalPension %></td>
+                        <td><%= personalPension %></td>
+                        <td><%= requestedAmount %></td>
+                        <td>
+                            <form action="ApproveRejectUpdateServlet" method="post" style="display:inline-block;">
+                                <input type="hidden" name="employeeId" value="<%= employeeId %>">
+                                <input type="hidden" name="action" value="approve">
+                                <button type="submit" class="approve">Approve</button>
+                            </form><br><br>
+                            <form action="ApproveRejectUpdateServlet" method="post" style="display:inline-block;">
+                                <input type="hidden" name="employeeId" value="<%= employeeId %>">
+                                <input type="hidden" name="action" value="reject">
+                                <button type="submit" class="reject">Reject</button>
+                            </form>
+                        </td>
+                    </tr>
+                    <%
+                    }
+                    %>
+                        </tbody>
+                    </table>
+                    <%
+                }
+                rs.close();
+                ptst.close();
+                conn.close();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            %>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>&copy; 2024 Pension Portal. All rights reserved.</p>
+    </div>
+
+    <script>
+        // Ensure the initial active tab is correctly displayed
+        document.getElementById("PendingRequests").style.display = "block";
+        document.getElementById("ProcessedRequests").style.display = "none";  // Initially hide the ProcessedRequests tab content
+    </script>
+</body>
+</html>

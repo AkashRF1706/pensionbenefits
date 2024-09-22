@@ -1,0 +1,67 @@
+package actions;
+
+import java.io.IOException;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.time.LocalDateTime;
+
+import javax.servlet.ServletException;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import database.DatabaseConnection;
+
+@WebServlet("/ApproveRejectWithdrawServlet")
+public class ApproveRejectWithdrawServlet extends HttpServlet {
+    private static final long serialVersionUID = 1L;
+
+    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        String employeeId = request.getParameter("employeeId");
+        String action = request.getParameter("action");
+        String statusFlag = "R";  // Default to rejection
+
+        try {
+            Connection conn = DatabaseConnection.getConnection();
+            String sql = "";
+            if (!("adminApprove".equalsIgnoreCase(action))) {
+                statusFlag = "approve".equalsIgnoreCase(action) ? "A" : "R";  // Send to Admin approval
+                sql = "UPDATE pensions SET withdraw_flag = ? WHERE employee_id = ?";
+                PreparedStatement pst = conn.prepareStatement(sql);
+                pst.setString(1, statusFlag);
+                pst.setInt(2, Integer.parseInt(employeeId));
+                int rowsUpdated = pst.executeUpdate();
+
+                if (rowsUpdated > 0) {
+                    response.sendRedirect("pensionRequests.jsp?withdrawSuccess");
+                } else {
+                    response.sendRedirect("pensionRequests.jsp?withdrawFailed");
+                }
+
+                pst.close();
+                conn.close();
+            } else if("adminApprove".equalsIgnoreCase(action)) {
+            	statusFlag = "AP"; // Approved by admin
+            	sql = "UPDATE pensions SET withdraw_flag = ?, pension_amount = pension_amount - withdraw_pension_amount, used_pension = used_pension + withdraw_pension_amount, "
+            			+ " withdraw_pension_amount = 0, last_updated_date = ? WHERE employee_id = ?";
+            	PreparedStatement pst = conn.prepareStatement(sql);
+                pst.setString(1, statusFlag);
+                pst.setTimestamp(2, java.sql.Timestamp.valueOf(LocalDateTime.now()));
+                pst.setInt(3, Integer.parseInt(employeeId));
+                int rowsUpdated = pst.executeUpdate();
+
+                if (rowsUpdated > 0) {
+                    response.sendRedirect("pensionRequests.jsp?withdrawSuccess");
+                } else {
+                    response.sendRedirect("pensionRequests.jsp?withdrawFailed");
+                }
+
+                pst.close();
+                conn.close();
+            }            
+        } catch (Exception e) {
+            e.printStackTrace();
+            response.sendRedirect("pensionRequests.jsp?withdrawFailed");
+        }
+    }
+}

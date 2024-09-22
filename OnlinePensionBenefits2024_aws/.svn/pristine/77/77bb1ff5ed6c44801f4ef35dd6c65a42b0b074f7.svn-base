@@ -1,0 +1,64 @@
+package servlet;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServlet;
+import database.DatabaseConnection;
+
+@WebServlet("/PensionersHomePage")
+public class PensionersHomePageServlet extends HttpServlet {
+
+    private static final long serialVersionUID = 1L;
+
+    public List<PensionDetails> getPensionDetails(int employeeId) {
+        List<PensionDetails> pensionDetailsList = new ArrayList<>();
+        Connection connection = null;
+        PreparedStatement pstmt = null;
+        ResultSet rs = null;
+
+        try {
+            connection = DatabaseConnection.getConnection();
+            pstmt = connection.prepareStatement("SELECT pension_amount FROM pensions where employee_id = '"+employeeId+"'");
+            rs = pstmt.executeQuery();
+
+            while (rs.next()) {
+                double pensionAmount = rs.getDouble("pension_amount");
+                pensionDetailsList.add(new PensionDetails(employeeId, pensionAmount));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                if (rs != null) rs.close();
+                if (pstmt != null) pstmt.close();
+                if (connection != null) connection.close();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+        return pensionDetailsList;
+    }
+
+    public static class PensionDetails {
+        private int employeeId;
+        private double pensionAmount;
+
+        public PensionDetails(int employeeId, double pensionAmount) {
+            this.employeeId = employeeId;
+            this.pensionAmount = pensionAmount;
+        }
+
+        public int getEmployeeId() {
+            return employeeId;
+        }
+
+        public double getPensionAmount() {
+            return pensionAmount;
+        }
+    }
+}

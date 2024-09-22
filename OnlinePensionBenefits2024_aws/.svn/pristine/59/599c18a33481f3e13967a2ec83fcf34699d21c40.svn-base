@@ -1,0 +1,58 @@
+package actions;
+
+import java.io.IOException;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+
+import javax.servlet.ServletException;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
+import database.DatabaseConnection;
+
+@WebServlet("/WithdrawPensionServlet")
+public class WithdrawPensionServlet extends HttpServlet {
+    private static final long serialVersionUID = 1L;
+
+    protected synchronized void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        HttpSession session = request.getSession();
+        String email = session.getAttribute("email").toString();
+        double withdrawAmount = Double.parseDouble(request.getParameter("withdrawAmount"));
+
+        try {
+            Connection conn = DatabaseConnection.getConnection();
+            String selectQuery = "Select withdraw_flag from pensions where withdraw_flag in ('C','A') and employee_id = (SELECT id FROM employees WHERE email = ?) ";
+            PreparedStatement ptst = conn.prepareStatement(selectQuery);
+            ptst.setString(1, email);
+            ResultSet rs = ptst.executeQuery();
+            if(rs.next()) {
+            	response.sendRedirect("managePension.jsp?RequestPending");
+            	return;
+            }
+            String sqlUpdate = "UPDATE pensions SET withdraw_pension_amount = ?, withdraw_flag = ? WHERE employee_id = (SELECT id FROM employees WHERE email = ?) "
+            		+ " AND withdraw_flag NOT IN (?, ?) ";
+            PreparedStatement pstUpdate = conn.prepareStatement(sqlUpdate);
+            pstUpdate.setDouble(1, withdrawAmount);
+            pstUpdate.setString(2, "C");
+            pstUpdate.setString(3, email);
+            pstUpdate.setString(4, "C");
+            pstUpdate.setString(5, "A");
+
+            int rowsUpdated = pstUpdate.executeUpdate();
+            if (rowsUpdated > 0) {
+                response.sendRedirect("managePension.jsp?withdrawSuccess");
+            } else {
+                response.sendRedirect("managePension.jsp?withdrawFailed");
+            }
+
+            pstUpdate.close();
+            conn.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+            response.sendRedirect("managePension.jsp?withdrawFailed");
+        }
+    }
+}

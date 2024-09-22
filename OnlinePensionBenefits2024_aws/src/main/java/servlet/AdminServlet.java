@@ -1,0 +1,84 @@
+package servlet;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.util.ArrayList;
+import java.sql.Date;
+import java.util.List;
+
+import database.DatabaseConnection;
+import model.CompanyDetails;
+import model.UserDetails;
+
+public class AdminServlet {
+
+    public List<CompanyDetails> getCompanyDetails() {
+        List<CompanyDetails> companyDetailsList = new ArrayList<>();
+
+        try {
+            Connection conn = DatabaseConnection.getConnection();
+            String sql = "Select c.company_name, u.email, c.id, u.user_id from users u join companies c on u.user_id = c.user_id "
+            		+ " where u.status = 'Pending'";
+            PreparedStatement stmt = conn.prepareStatement(sql);
+            ResultSet rs = stmt.executeQuery();
+
+            while (rs.next()) {
+                int companyId = rs.getInt("id");
+                int userId = rs.getInt("user_id");
+                String companyName = rs.getString("company_name");
+                String email = rs.getString("email");
+
+                CompanyDetails company = new CompanyDetails(companyId, userId, companyName, email);
+                companyDetailsList.add(company);
+            }
+
+            conn.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return companyDetailsList;
+    }
+    
+    public List<UserDetails> getUserDetails() {
+        List<UserDetails> userDetailsList = new ArrayList<>();
+
+        try {
+            Connection conn = DatabaseConnection.getConnection();
+            String sql = "SELECT u.user_id, u.username, u.email, u.first_name, u.last_name, r.role_name, "
+                       + "c.company_name, u.date_of_birth "
+                       + "FROM users u "
+                       + "JOIN user_roles ur ON u.user_id = ur.user_id "
+                       + "JOIN roles r ON ur.role_id = r.role_id "
+                       + "LEFT JOIN companies c ON u.user_id = c.user_id where r.role_id != 1 order by u.user_id ";
+            PreparedStatement stmt = conn.prepareStatement(sql);
+            ResultSet rs = stmt.executeQuery();
+
+            while (rs.next()) {
+                int userId = rs.getInt("user_id");
+                String username = rs.getString("username");
+                String email = rs.getString("email");
+                String firstName = rs.getString("first_name");
+                String lastName = rs.getString("last_name");
+                String role = rs.getString("role_name");
+                String companyName = rs.getString("company_name");
+                Date dateOfBirth = rs.getDate("date_of_birth");
+
+                UserDetails user = null;;
+                if ("Company".equalsIgnoreCase(role)) {
+                    user = new UserDetails(userId, username, email, role, companyName);
+                } else if ("Pensioner".equalsIgnoreCase(role)) {
+                    user = new UserDetails(userId, username, email, firstName, lastName, role, dateOfBirth);
+                }
+                userDetailsList.add(user);
+            }
+
+            conn.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return userDetailsList;
+    }
+}

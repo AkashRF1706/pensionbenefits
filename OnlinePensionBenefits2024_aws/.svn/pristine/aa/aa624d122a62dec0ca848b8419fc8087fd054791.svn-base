@@ -1,0 +1,117 @@
+package database;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
+
+import model.Employee;
+
+public class EmployeeDAO {
+    private Connection connection;
+
+    public EmployeeDAO() {
+        try {
+            connection = DatabaseConnection.getConnection();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public List<String> fetchAllEmails() throws SQLException {
+        List<String> emails = new ArrayList<>();
+        String sql = "SELECT email FROM employees";
+        try (PreparedStatement ps = connection.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                emails.add(rs.getString("email"));
+            }
+        }
+        return emails;
+    }
+
+    public int saveEmployee(Employee employee, List<String> existingEmails) throws SQLException {
+        if (existingEmails.contains(employee.getEmail())) {
+            return -1; // Indicate that the employee already exists
+        }
+
+        String sql = "INSERT INTO employees (first_name, last_name, email, company) VALUES (?, ?, ?, ?)";
+        int employeeId = 0;
+
+        try (PreparedStatement ps = connection.prepareStatement(sql, PreparedStatement.RETURN_GENERATED_KEYS)) {
+            ps.setString(1, employee.getFirstName());
+            ps.setString(2, employee.getLastName());
+            ps.setString(3, employee.getEmail());
+            ps.setString(4, employee.getCompany());
+            ps.executeUpdate();
+
+            try (ResultSet generatedKeys = ps.getGeneratedKeys()) {
+                if (generatedKeys.next()) {
+                    employeeId = generatedKeys.getInt(1);
+                }
+            }
+        }
+        return employeeId;
+    }
+
+    public void saveEmployeeSalary(int employeeId, Employee employee) throws SQLException {
+        String sql = "INSERT INTO employee_salaries (employee_id, salary, personal_pension, workplace_pension) VALUES (?, ?, ?, ?)";
+
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setInt(1, employeeId);
+            ps.setDouble(2, employee.getAnnualSalary());
+            ps.setDouble(3, employee.getPersonalPension());
+            ps.setDouble(4, employee.getWorkplacePension());
+            ps.executeUpdate();
+        }
+    }
+
+    public void saveEmployees(List<Employee> employees, List<String> existingEmails) throws SQLException {
+        try {
+            connection.setAutoCommit(false);
+
+            for (Employee employee : employees) {
+                if (existingEmails.contains(employee.getEmail())) {
+                    continue; // Skip the existing employee
+                }
+                int employeeId = saveEmployee(employee, existingEmails);
+                if (employeeId != -1) {
+                    saveEmployeeSalary(employeeId, employee);
+                    existingEmails.add(employee.getEmail()); // Add to existing emails list
+                }
+            }
+
+            connection.commit();
+        } catch (SQLException e) {
+            connection.rollback();
+            throw e;
+        } finally {
+            connection.setAutoCommit(true);
+        }
+    }
+    
+    public List<Employee> getAllEmployees(String company) throws SQLException {
+        List<Employee> employees = new ArrayList<>();
+        String sql = "SELECT e.first_name, e.last_name, e.email, e.company, s.salary, s.personal_pension, s.workplace_pension " +
+                     "FROM employees e JOIN employee_salaries s ON e.id = s.employee_id where e.company = '"+company+"'";
+
+        try (PreparedStatement ps = connection.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                Employee employee = new Employee(
+                        rs.getString("first_name"),
+                        rs.getString("last_name"),
+                        rs.getString("email"),
+                        rs.getString("company"),
+                        rs.getDouble("salary"),
+                        rs.getDouble("personal_pension"),
+                        rs.getDouble("workplace_pension")
+                );
+                employees.add(employee);
+            }
+        }
+        return employees;
+    }
+}
