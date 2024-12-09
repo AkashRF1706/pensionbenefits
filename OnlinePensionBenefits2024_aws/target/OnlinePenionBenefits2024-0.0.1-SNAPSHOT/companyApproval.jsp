@@ -1,0 +1,185 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.util.*" %>
+<%@ page import="model.CompanyDetails" %>
+<%@ page import="servlet.AdminServlet" %>
+<%@ page import="com.google.gson.Gson" %>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Approve/Reject Companies</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+        .header {
+            background-color: #4CAF50;
+            padding: 20px;
+            text-align: center;
+            color: white;
+        }
+        .header h1 {
+            margin: 0;
+        }
+        .navbar {
+            display: flex;
+            justify-content: center;
+            background-color: #333;
+        }
+        .navbar a {
+            padding: 14px 20px;
+            display: block;
+            color: white;
+            text-align: center;
+            text-decoration: none;
+        }
+        .navbar a:hover {
+            background-color: #ddd;
+            color: black;
+        }
+        .main {
+            padding: 20px;
+            text-align: center;
+        }
+        .main h2 {
+            color: #4CAF50;
+        }
+        .main p {
+            font-size: 18px;
+            margin-bottom: 20px;
+        }
+        .footer {
+            background-color: #333;
+            color: white;
+            text-align: center;
+            padding: 10px;
+            position: relative;
+            bottom: 0;
+            width: 100%;
+        }
+        .button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 15px 25px;
+            border: none;
+            cursor: pointer;
+            font-size: 18px;
+            margin: 10px;
+        }
+        .button:hover {
+            background-color: grey;
+        }
+        .table-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+        table {
+            width: 80%;
+            margin: 20px 0;
+            border-collapse: collapse;
+        }
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #4CAF50;
+            color: white;
+        }
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+        .action-buttons {
+            display: flex;
+            justify-content: space-around;
+        }
+        .approve-button {
+            background-color: #4CAF50;
+        }
+        .reject-button {
+            background-color: #f44336;
+        }
+    </style>
+</head>
+<body>
+<% if (request.getParameter("success") != null) { %>
+        <script>alert('Company status updated!');</script>
+        <% } %>
+        <% if (request.getParameter("failure") != null) { %>
+        <script>alert('Unable to update company status. Please try again!');</script>
+        <% } %>
+    <div class="header">
+        <% String adminName = (String) session.getAttribute("name"); %>
+        <h1>Welcome to the Admin Portal</h1>
+    </div>
+    <div class="navbar">
+        <a href="admin.jsp">Home</a> 
+		<a href="companyApproval.jsp">Approve Companies</a> 
+			<a href="pensionRequests.jsp">Pension Requests</a> 
+			<a href="manageUsers.jsp">Manage Users</a> 
+			<a href="logout.jsp">Logout</a>
+    </div>
+    <div class="main">
+        <h2>Approve or Reject Companies</h2>
+
+        <% 
+            List<CompanyDetails> companyDetailsList = new ArrayList<>();
+            AdminServlet adminServlet = new AdminServlet();
+            companyDetailsList = adminServlet.getCompanyDetails();
+            if(companyDetailsList != null && !companyDetailsList.isEmpty()){
+            System.out.println(companyDetailsList.toString());
+        %>
+        
+        
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Company Name</th>
+                        <th>Email</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% for (CompanyDetails company : companyDetailsList) { %>
+                        <tr>
+                            <td><%= company.getCompanyName() %></td>
+                            <td><%= company.getEmail() %></td>
+                            <td class="action-buttons">
+                                <form action="handleApprovalServlet" method="post">
+                                    <input type="hidden" name="companyId" value="<%= company.getUserId() %>">
+                                    <input type="hidden" name="isApproved" value="true">
+                                    <button type="submit" class="button approve-button">Approve</button>
+                                </form>
+                                <form action="handleApprovalServlet" method="post">
+                                    <input type="hidden" name="companyId" value="<%= company.getUserId() %>">
+                                    <input type="hidden" name="isApproved" value="false">
+                                    <button type="submit" class="button reject-button">Reject</button>
+                                </form>
+                            </td>
+                        </tr>
+                    <% } %>
+                </tbody>
+            </table>
+        </div>
+        <%} else{ %>
+        <p>Nothing to display.</p>
+        <%} %>
+    </div>
+    <div class="footer">
+        <p>&copy; 2024 Pension Portal. All rights reserved.</p>
+    </div>
+</body>
+</html>
