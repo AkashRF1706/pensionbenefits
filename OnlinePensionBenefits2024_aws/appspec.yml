@@ -1,0 +1,21 @@
+version: 0.0
+os: linux
+files:
+  - source: target/OnlinePenionBenefits2024-0.0.1-SNAPSHOT.war
+    destination: /usr/local/tomcat/webapps
+
+hooks:
+  BeforeInstall:
+    - location: scripts/stop-tomcat.sh
+      timeout: 300
+      runas: root
+
+  AfterInstall:
+    - location: scripts/start-tomcat.sh
+      timeout: 300
+      runas: root
+
+  ApplicationStart:
+    - location: scripts/post-deploy.sh
+      timeout: 300
+      runas: root
